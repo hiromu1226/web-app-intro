@@ -1,62 +1,53 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // 価格履歴管理用
+    const priceHistoryList = document.getElementById('price-history');
+    const totalPriceSpan = document.getElementById('total-price');
+    let priceHistory = [];
+
     const dataList = document.getElementById('data-list');
     const addDataForm = document.getElementById('add-data-form');
     const value1Input = document.getElementById('value1');
     const value2Input = document.getElementById('value2');
 
-    // データ一覧を取得して表示する関数
-    async function fetchData() {
-        try {
-            const response = await fetch('/data');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+    // 消費税計算機の要素取得
+    const taxForm = document.getElementById('tax-form');
+    const priceInput = document.getElementById('price');
+    const taxRateInput = document.getElementById('tax-rate');
+    const taxResult = document.getElementById('tax-result');
+
+    // 消費税計算フォームの送信イベント
+    if (taxForm) {
+        taxForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const price = parseFloat(priceInput.value);
+            const taxRate = parseFloat(taxRateInput.value);
+            if (isNaN(price) || isNaN(taxRate)) {
+                taxResult.textContent = '正しい数値を入力してください。';
+                return;
             }
-            const data = await response.json();
-            dataList.innerHTML = ''; // 既存のリストをクリア
-            data.forEach(item => {
-                const listItem = document.createElement('li');
-                listItem.textContent = `ID: ${item.id}, 値1: ${item.value_1}, 値2: ${item.value_2 || 'N/A'}`;
-                dataList.appendChild(listItem);
-            });
-        } catch (error) {
-            console.error('データの取得に失敗しました:', error);
-            dataList.innerHTML = '<li>データの取得に失敗しました。</li>';
-        }
+            const taxAmount = Math.floor(price * (taxRate / 100));
+            const total = price + taxAmount;
+            taxResult.innerHTML = `税込価格: <strong>${total.toLocaleString()}円</strong><br>消費税額: ${taxAmount.toLocaleString()}円<br>税抜価格: ${price.toLocaleString()}円`;
+
+            // 履歴に追加
+            priceHistory.push(price);
+            updatePriceHistory();
+        });
     }
 
-    // データ追加フォームの送信イベントリスナー
-    addDataForm.addEventListener('submit', async (event) => {
-        event.preventDefault(); // デフォルトのフォーム送信をキャンセル
+    // 履歴リストと合計金額の表示更新
+    function updatePriceHistory() {
+        // 履歴リスト表示
+        priceHistoryList.innerHTML = '';
+        priceHistory.forEach((p, i) => {
+            const li = document.createElement('li');
+            li.textContent = `${p.toLocaleString()} 円`;
+            priceHistoryList.appendChild(li);
+        });
+        // 合計金額表示
+        const sum = priceHistory.reduce((acc, cur) => acc + cur, 0);
+        totalPriceSpan.textContent = sum.toLocaleString();
+    }
 
-        const value1 = value1Input.value;
-        const value2 = value2Input.value;
-
-        try {
-            const response = await fetch('/data', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ value_1: value1, value_2: value2 }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            // フォームをクリア
-            value1Input.value = '';
-            value2Input.value = '';
-
-            // データ一覧を再読み込み
-            await fetchData();
-
-        } catch (error) {
-            console.error('データの追加に失敗しました:', error);
-            alert('データの追加に失敗しました。');
-        }
-    });
-
-    // 初期データの読み込み
-    fetchData();
+    // ...existing code...
 });
